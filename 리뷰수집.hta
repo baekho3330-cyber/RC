@@ -1,0 +1,75 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Review Collector</title>
+<HTA:APPLICATION
+  ID="oApp"
+  APPLICATIONNAME="Review Collector"
+  BORDER="thin"
+  CAPTION="no"
+  SHOWINTASKBAR="no"
+  SINGLEINSTANCE="yes"
+  WINDOWSTATE="normal"
+/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #111;
+  color: #b0b0b0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  user-select: none;
+}
+.box { text-align: center; }
+.logo {
+  width: 44px; height: 44px;
+  background: #fff;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Arial Black', Arial, sans-serif;
+  font-weight: 900;
+  font-size: 24px;
+  color: #000;
+  margin: 0 auto 14px;
+  line-height: 44px;
+  text-align: center;
+}
+h2 { font-size: 15px; color: #f0f0f0; font-weight: 600; margin-bottom: 6px; }
+p  { font-size: 11px; color: #555; letter-spacing: 0.04em; }
+</style>
+<script language="VBScript">
+Sub Window_OnLoad()
+    window.resizeTo 260, 150
+    window.moveTo (screen.availWidth  - 260) \ 2, _
+                  (screen.availHeight - 150) \ 2
+
+    Dim shell, rawPath, dir
+    Set shell = CreateObject("WScript.Shell")
+
+    rawPath = Replace(document.location.pathname, "/", "\")
+    If Left(rawPath, 1) = "\" Then rawPath = Mid(rawPath, 2)
+    dir = Left(rawPath, InStrRev(rawPath, "\") - 1)
+
+    shell.CurrentDirectory = dir
+    shell.Run "python app.py", 0, False
+
+    window.setTimeout "Launch", 1400
+End Sub
+
+Sub Launch()
+    CreateObject("WScript.Shell").Run "http://127.0.0.1:5001"
+    window.close()
+End Sub
+</script>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">R</div>
+    <h2>Review Collector</h2>
+    <p>Starting server...</p>
+  </div>
+</body>
+</html>

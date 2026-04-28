@@ -1,0 +1,42 @@
+# 출력물
+output/
+*.xlsx
+
+# 설정 (PC마다 다름)
+config.json
+icon.ico
+
+# 디버그/임시 파일
+debug_*.py
+debug_*.html
+debug_*.png
+debug_*.json
+coupang_*.py
+coupang_*.html
+coupang_*.png
+coupang_*.json
+livart_*.json
+livart_*.html
+livart_*.png
+ohou_*.json
+ohou_*.html
+ohou_*.png
+debug_page.html
+debug_page.py
+debug_screenshot.png
+
+# 사용 안 하는 크롤러
+naver_crawler.py
+main.py
+exporter.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review Collector</title>
+<style>
+/* ── Reset ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #111111;
+  --surface:  #1a1a1a;
+  --surface2: #202020;
+  --border:   #333333;
+  --border2:  #404040;
+  --text:     #f8f8f8;
+  --muted:    #b0b0b0;
+  --muted2:   #555555;
+  --white:    #ffffff;
+  --green:    #3ddc84;
+  --blue:     #5b8dee;
+  --red:      #e05c5c;
+  --amber:    #e0a820;
+  --radius:   10px;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ─────────────────────────────────────────── */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.logo {
+  width: 34px; height: 34px;
+  background: var(--white);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Arial Black', Arial, sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  color: #000;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.header-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.header-sites {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+main {
+  flex: 1;
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Card ───────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.card-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Field ──────────────────────────────────────────── */
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field input {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.field input:focus {
+  border-color: #3a3a3a;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.04);
+}
+
+.field input::placeholder { color: var(--muted); }
+
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; min-width: 0; }
+
+.hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── Badge ──────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity .2s;
+  pointer-events: none;
+  width: fit-content;
+}
+.badge.show { opacity: 1; }
+.badge.livart  { background:#2a0c0c; color:#e05c5c; border:1px solid #3d1414; }
+.badge.ohou    { background:#0a2016; color:#3ddc84; border:1px solid #143d28; }
+.badge.hanssem { background:#0a1428; color:#5b8dee; border:1px solid #142240; }
+.badge.unknown { background:#221a08; color:#e0a820; border:1px solid #3d3010; }
+
+/* ── Buttons ────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: background .12s, color .12s, opacity .12s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn-ghost {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { background: #222; }
+
+.btn-primary {
+  background: var(--white);
+  color: #000;
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: var(--radius);
+  letter-spacing: .01em;
+}
+.btn-primary:hover:not(:disabled) { background: #e0e0e0; }
+.btn-primary:disabled {
+  background: #1e1e1e;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* ── Spinner ────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 13px; height: 13px;
+  border: 2px solid #444;
+  border-top-color: #999;
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+  display: none;
+  flex-shrink: 0;
+}
+.spinner.show { display: block; }
+
+/* ── Log ────────────────────────────────────────────── */
+.log-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(61,220,132,.4); }
+  50%       { opacity: .6; box-shadow: 0 0 0 4px rgba(61,220,132,0); }
+}
+
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted2);
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.dot.active {
+  background: var(--green);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+#log-box {
+  background: #050505;
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  height: 260px;
+  overflow-y: auto;
+  font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+#log-box::-webkit-scrollbar { width: 3px; }
+#log-box::-webkit-scrollbar-track { background: transparent; }
+#log-box::-webkit-scrollbar-thumb { background: #252525; border-radius: 2px; }
+
+.log-line { white-space: pre-wrap; word-break: break-all; }
+.log-info    { color: #90beff; }
+.log-success { color: #5de8a0; }
+.log-error   { color: #f58080; }
+.log-default { color: #c0c0c0; }
+
+/* ── Result ─────────────────────────────────────────── */
+#result {
+  background: #081a0f;
+  border: 1px solid #163324;
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  animation: fadeIn .25s ease;
+}
+#result.hidden { display: none; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.result-check {
+  width: 36px; height: 36px;
+  background: #0f2e1a;
+  border: 1px solid #1c4a2c;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  color: var(--green);
+}
+
+.result-body { flex: 1; min-width: 0; }
+.result-title { font-size: 13px; font-weight: 600; color: var(--green); }
+.result-file  {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Consolas', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* ── Divider ─────────────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">R</div>
+  <span class="header-title">Review Collector</span>
+  <span class="header-sites">현대리바트몰 &middot; 오늘의집 &middot; 한샘몰</span>
+</header>
+
+<main>
+
+  <!-- Config -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">Configuration</span>
+    </div>
+    <div class="card-body">
+
+      <div class="field">
+        <label>Product URL</label>
+        <input type="text" id="url"
+               placeholder="https://store.hanssem.com/goods/..."
+               autocomplete="off" spellcheck="false">
+        <div class="badge" id="badge"></div>
+      </div>
+
+      <div class="field">
+        <label>Save Location</label>
+        <div class="input-row">
+          <input type="text" id="save_dir"
+                 value="{{ default_dir }}" spellcheck="false">
+          <button class="btn btn-ghost" onclick="browse()">Browse</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Max Reviews</label>
+        <input type="number" id="max_reviews"
+               value="{{ max_reviews }}" min="0"
+               style="width:110px;">
+        <span class="hint">0 = collect all</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Start -->
+  <button class="btn btn-primary" id="start-btn" onclick="startCrawl()">
+    <div class="spinner" id="spinner"></div>
+    <span id="btn-text">Start Collection</span>
+  </button>
+
+  <!-- Result -->
+  <div id="result" class="hidden">
+    <div class="result-check">✓</div>
+    <div class="result-body">
+      <div class="result-title">Collection complete</div>
+      <div class="result-file" id="result-file"></div>
+    </div>
+    <button class="btn btn-ghost" onclick="openFolder()">Open Folder</button>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">Log</span>
+      <div class="log-status">
+        <div class="dot" id="dot"></div>
+        <span id="log-label">Idle</span>
+      </div>
+    </div>
+    <div id="log-box"></div>
+  </div>
+
+</main>
+
+<script>
+const SITE_PATTERNS = {
+  livart:  /hyundailivart\.co\.kr/i,
+  ohou:    /(?:store\.)?ohou\.se/i,
+  hanssem: /store\.hanssem\.com/i,
+};
+const SITE_NAMES = {
+  livart: "현대리바트몰", ohou: "오늘의집", hanssem: "한샘몰",
+};
+
+let resultPath = "";
+let es = null;
+
+function detectSite(url) {
+  for (const [k, p] of Object.entries(SITE_PATTERNS)) if (p.test(url)) return k;
+  return null;
+}
+
+// URL → badge
+document.getElementById("url").addEventListener("input", function () {
+  const badge = document.getElementById("badge");
+  const url   = this.value.trim();
+  const site  = detectSite(url);
+  badge.className = "badge";
+  if (!url) return;
+  if (site) {
+    badge.textContent = "✓  " + SITE_NAMES[site];
+    badge.classList.add("show", site);
+  } else {
+    badge.textContent = "⚠  Unsupported site";
+    badge.classList.add("show", "unknown");
+  }
+});
+
+// Log helpers
+function addLog(msg) {
+  const box  = document.getElementById("log-box");
+  const line = document.createElement("div");
+  line.className = "log-line " + classifyLog(msg);
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById("log-box").innerHTML = "";
+}
+
+function classifyLog(m) {
+  if (m.startsWith("[*]") || m.includes("수집") || m.includes("캡처")) return "log-info";
+  if (m.startsWith("[완료]") || m.includes("완료") || m.includes("저장"))  return "log-success";
+  if (m.startsWith("[!]") || m.includes("오류") || m.includes("Error"))    return "log-error";
+  return "log-default";
+}
+
+// UI state
+function setRunning(on) {
+  document.getElementById("start-btn").disabled = on;
+  document.getElementById("spinner").classList.toggle("show", on);
+  document.getElementById("btn-text").textContent = on ? "Collecting..." : "Start Collection";
+  document.getElementById("dot").classList.toggle("active", on);
+  document.getElementById("log-label").textContent = on ? "Running" : "Idle";
+}
+
+// Browse folder
+async function browse() {
+  const current = document.getElementById("save_dir").value;
+  const res  = await fetch("/browse", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current }),
+  });
+  const data = await res.json();
+  if (data.path) document.getElementById("save_dir").value = data.path;
+}
+
+// Start crawl
+async function startCrawl() {
+  const url         = document.getElementById("url").value.trim();
+  const save_dir    = document.getElementById("save_dir").value.trim();
+  const max_reviews = parseInt(document.getElementById("max_reviews").value || "500");
+
+  if (!url) { alert("상품 URL을 입력해주세요."); return; }
+  if (!detectSite(url)) {
+    alert(
+      "지원하지 않는 URL입니다.\n\n" +
+      "• 현대리바트몰: hyundailivart.co.kr\n" +
+      "• 오늘의집: store.ohou.se\n" +
+      "• 한샘몰: store.hanssem.com"
+    );
+    return;
+  }
+
+  clearLog();
+  document.getElementById("result").classList.add("hidden");
+  setRunning(true);
+
+  const res = await fetch("/crawl", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, save_dir, max_reviews }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    addLog("[!] " + (err.msg || "오류 발생"));
+    setRunning(false);
+    return;
+  }
+
+  if (es) es.close();
+  es = new EventSource("/stream");
+
+  es.onmessage = function (e) {
+    const data = e.data;
+    if (data === "__PING__") return;
+    if (data.startsWith("__DONE__")) {
+      es.close();
+      setRunning(false);
+      try {
+        const r = JSON.parse(data.slice(8));
+        if (r.ok) {
+          resultPath = r.path;
+          document.getElementById("result-file").textContent = r.name;
+          document.getElementById("result").classList.remove("hidden");
+        }
+      } catch (_) {}
+      return;
+    }
+    addLog(data);
+  };
+
+  es.onerror = function () { es.close(); setRunning(false); };
+}
+
+// Open folder
+async function openFolder() {
+  await fetch("/open_folder", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: resultPath }),
+  });
+}
+</script>
+</body>
+</html>
