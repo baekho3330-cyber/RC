@@ -1,5 +1,6 @@
 # 출력물
 output/
+temp/
 *.xlsx
 
 # 설정 (PC마다 다름)
