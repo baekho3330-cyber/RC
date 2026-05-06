@@ -31,8 +31,32 @@ def extract_product_id(url: str) -> str | None:
     return m.group(1) if m else None
 
 
-def fetch_all_reviews(product_id: str) -> tuple[list[dict], dict]:
-    """오늘의집 리뷰 전체 수집. (reviews, stats) 반환"""
+def _get_ohou_session(product_id: str) -> requests.Session:
+    """Playwright로 실제 브라우저 쿠키/헤더를 획득해 requests Session 반환"""
+    from playwright.sync_api import sync_playwright
+
+    cookies_dict = {}
+    headers_extra = {}
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+            ctx = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                locale="ko-KR",
+            )
+            page = ctx.new_page()
+            page.goto(f"https://store.ohou.se/goods/{product_id}", wait_until="domcontentloaded", timeout=30000)
+            page.wait_for_timeout(2000)
+
+            for c in ctx.cookies():
+                cookies_dict[c["name"]] = c["value"]
+
+            browser.close()
+        print("[*] 브라우저 세션 획득 완료")
+    except Exception as e:
+        print(f"[*] 브라우저 세션 실패, 기본 헤더 사용: {e}")
+
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -48,12 +72,19 @@ def fetch_all_reviews(product_id: str) -> tuple[list[dict], dict]:
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-origin",
     })
+    session.cookies.update(cookies_dict)
+    return session
+
+
+def fetch_all_reviews(product_id: str) -> tuple[list[dict], dict]:
+    """오늘의집 리뷰 전체 수집. (reviews, stats) 반환"""
+    session = _get_ohou_session(product_id)
 
     # 별점 통계
     stats = {}
     try:
         r = session.get(
-            f"https://store.ohou.se/api/goods/reviews/counts-for-stars",
+            "https://store.ohou.se/api/goods/reviews/counts-for-stars",
             params={"productionId": product_id}, timeout=10
         )
         stats = r.json()
@@ -73,7 +104,7 @@ def fetch_all_reviews(product_id: str) -> tuple[list[dict], dict]:
         timeout=10
     )
     if r0.status_code != 200 or not r0.text.strip():
-        raise RuntimeError(f"오늘의집 API 오류 (HTTP {r0.status_code}) — 서버 재시작 후 재시도하세요.")
+        raise RuntimeError(f"오늘의집 API 오류 (HTTP {r0.status_code})")
     total = r0.json().get("totalCount", 0)
     print(f"[*] 총 리뷰: {total}개")
 

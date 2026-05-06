@@ -130,6 +130,9 @@ main {
 
 .field input::placeholder { color: var(--muted2); }
 
+.input-row { display: flex; gap: 8px; }
+.input-row input { flex: 1; min-width: 0; }
+
 .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
 .badge {
@@ -163,7 +166,6 @@ main {
   transition: background .12s, color .12s;
   user-select: none;
   white-space: nowrap;
-  text-decoration: none;
 }
 
 .btn-ghost {
@@ -183,13 +185,6 @@ main {
 }
 .btn-primary:hover:not(:disabled) { background: #e0e0e0; }
 .btn-primary:disabled { background: #1e1e1e; color: var(--muted); cursor: not-allowed; }
-
-.btn-download {
-  background: #0f2e1a;
-  color: var(--green);
-  border: 1px solid #1c4a2c;
-}
-.btn-download:hover { background: #143820; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner {
@@ -311,6 +306,14 @@ main {
       </div>
 
       <div class="field">
+        <label>Save Location</label>
+        <div class="input-row">
+          <input type="text" id="save_dir" value="{{ default_dir }}" spellcheck="false">
+          <button class="btn btn-ghost" onclick="browse()">Browse</button>
+        </div>
+      </div>
+
+      <div class="field">
         <label>Max Reviews</label>
         <input type="number" id="max_reviews"
                value="{{ max_reviews }}" min="0" style="width:110px;">
@@ -331,7 +334,7 @@ main {
       <div class="result-title">Collection complete</div>
       <div class="result-file" id="result-file"></div>
     </div>
-    <a class="btn btn-download" id="dl-btn" href="#" download>Download</a>
+    <button class="btn btn-ghost" onclick="openFolder()">Open Folder</button>
   </div>
 
   <div class="card">
@@ -353,10 +356,9 @@ const SITE_PATTERNS = {
   ohou:    /(?:store\.)?ohou\.se/i,
   hanssem: /store\.hanssem\.com/i,
 };
-const SITE_NAMES = {
-  livart: "현대리바트몰", ohou: "오늘의집", hanssem: "한샘몰",
-};
+const SITE_NAMES = { livart: "현대리바트몰", ohou: "오늘의집", hanssem: "한샘몰" };
 
+let resultPath = "";
 let es = null;
 
 function detectSite(url) {
@@ -403,8 +405,20 @@ function setRunning(on) {
   document.getElementById("log-label").textContent = on ? "Running" : "Idle";
 }
 
+async function browse() {
+  const current = document.getElementById("save_dir").value;
+  const res  = await fetch("/browse", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current }),
+  });
+  const data = await res.json();
+  if (data.path) document.getElementById("save_dir").value = data.path;
+}
+
 async function startCrawl() {
   const url         = document.getElementById("url").value.trim();
+  const save_dir    = document.getElementById("save_dir").value.trim();
   const max_reviews = parseInt(document.getElementById("max_reviews").value || "500");
 
   if (!url) { alert("상품 URL을 입력해주세요."); return; }
@@ -420,7 +434,7 @@ async function startCrawl() {
   const res = await fetch("/crawl", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, max_reviews }),
+    body: JSON.stringify({ url, save_dir, max_reviews }),
   });
 
   if (!res.ok) {
@@ -442,8 +456,8 @@ async function startCrawl() {
       try {
         const r = JSON.parse(data.slice(8));
         if (r.ok) {
-          document.getElementById("result-file").textContent = r.filename;
-          document.getElementById("dl-btn").href = "/download/" + encodeURIComponent(r.filename);
+          resultPath = r.path;
+          document.getElementById("result-file").textContent = r.name;
           document.getElementById("result").classList.remove("hidden");
         }
       } catch (_) {}
@@ -453,6 +467,14 @@ async function startCrawl() {
   };
 
   es.onerror = function () { es.close(); setRunning(false); };
+}
+
+async function openFolder() {
+  await fetch("/open_folder", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: resultPath }),
+  });
 }
 </script>
 </body>

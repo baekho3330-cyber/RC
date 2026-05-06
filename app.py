@@ -1,6 +1,6 @@
 """
-리뷰 수집 웹 앱 - Flask + HTML UI
-로컬: python app.py  /  클라우드: PORT 환경변수 자동 사용
+리뷰 수집 프로그램 - 로컬 실행용
+실행: python app.py  (브라우저 자동 오픈)
 """
 import json
 import os
@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 import threading
-import time
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 
@@ -21,10 +21,9 @@ except ImportError:
 
 os.chdir(Path(__file__).parent)
 
-TEMP_DIR = Path(__file__).parent / "temp"
-TEMP_DIR.mkdir(exist_ok=True)
-
-IS_LOCAL = sys.platform == "win32" and not os.environ.get("PORT")
+CONFIG_FILE = Path(__file__).parent / "config.json"
+OUTPUT_DIR  = Path(__file__).parent / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 SITE_PATTERNS = {
     "livart":  r"hyundailivart\.co\.kr",
@@ -42,15 +41,14 @@ log_q: queue.Queue = queue.Queue()
 state: dict = {"running": False, "result": None}
 
 
-# ── 설정 (로컬 전용) ──────────────────────────────────────────────────────
-
-CONFIG_FILE = Path(__file__).parent / "config.json"
+# ── 설정 ──────────────────────────────────────────────────────────────────
 
 def load_config() -> dict:
     try:
         return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
 
 def save_config(data: dict):
     try:
@@ -72,10 +70,11 @@ def detect_site(text: str) -> str | None:
 
 # ── Excel 저장 ────────────────────────────────────────────────────────────
 
-def save_to_excel(reviews: list[dict], site: str, product_name: str) -> Path:
+def save_to_excel(reviews: list[dict], site: str, product_name: str, output_dir: str) -> str:
     import pandas as pd
     from openpyxl.styles import Alignment, Font, PatternFill
 
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(reviews)
     if "내용" in df.columns and "리뷰내용" not in df.columns:
         df = df.rename(columns={"내용": "리뷰내용"})
@@ -90,7 +89,7 @@ def save_to_excel(reviews: list[dict], site: str, product_name: str) -> Path:
 
     ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe = re.sub(r'[\\/:*?"<>|]', "_", product_name)[:30]
-    path = TEMP_DIR / f"{site}_{safe}_{ts}.xlsx"
+    path = f"{output_dir}/{site}_{safe}_{ts}.xlsx"
 
     COL_WIDTHS = {
         "리뷰ID": 14, "상품명": 40, "상품번호": 14,
@@ -105,7 +104,7 @@ def save_to_excel(reviews: list[dict], site: str, product_name: str) -> Path:
     H_FONT = Font(color="FFFFFF", bold=True)
     content_col = next((i for i, c in enumerate(df.columns, 1) if c == "리뷰내용"), None)
 
-    with pd.ExcelWriter(str(path), engine="openpyxl") as writer:
+    with pd.ExcelWriter(path, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="리뷰데이터", index=False)
         ws = writer.sheets["리뷰데이터"]
         for cell in ws[1]:
@@ -123,17 +122,6 @@ def save_to_excel(reviews: list[dict], site: str, product_name: str) -> Path:
             ws.row_dimensions[rn].height = 55
 
     return path
-
-
-def cleanup_temp():
-    """1시간 이상 된 임시 파일 삭제"""
-    cutoff = time.time() - 3600
-    for f in TEMP_DIR.glob("*.xlsx"):
-        try:
-            if f.stat().st_mtime < cutoff:
-                f.unlink()
-        except Exception:
-            pass
 
 
 # ── 로그 스트림 ───────────────────────────────────────────────────────────
@@ -158,9 +146,9 @@ class QueueWriter:
 
 # ── 크롤링 워커 ───────────────────────────────────────────────────────────
 
-def crawl_worker(url: str, site: str, max_r: int):
-    old_stdout      = sys.stdout
-    sys.stdout      = QueueWriter(log_q)
+def crawl_worker(url: str, site: str, save_dir: str, max_r: int):
+    old_stdout       = sys.stdout
+    sys.stdout       = QueueWriter(log_q)
     state["running"] = True
     state["result"]  = None
 
@@ -194,11 +182,10 @@ def crawl_worker(url: str, site: str, max_r: int):
         ) or "상품"
 
         print("[*] 엑셀 저장 중...")
-        cleanup_temp()
-        path = save_to_excel(reviews, site, product_name)
-        print(f"[완료] {path.name}")
+        path = save_to_excel(reviews, site, product_name, save_dir)
+        print(f"[완료] {Path(path).name}")
 
-        state["result"] = {"ok": True, "filename": path.name}
+        state["result"] = {"ok": True, "path": path, "name": Path(path).name}
 
     except Exception as e:
         import traceback
@@ -219,8 +206,30 @@ def index():
     cfg = load_config()
     return render_template(
         "index.html",
+        default_dir=cfg.get("save_dir", str(OUTPUT_DIR)),
         max_reviews=cfg.get("max_reviews", 500),
     )
+
+
+@flask_app.route("/browse", methods=["POST"])
+def browse():
+    current = (request.json or {}).get("current", str(Path.home()))
+    try:
+        res = subprocess.run(
+            ["powershell", "-Command",
+             f'Add-Type -AssemblyName System.Windows.Forms; '
+             f'$f = New-Object System.Windows.Forms.FolderBrowserDialog; '
+             f'$f.SelectedPath = "{current}"; '
+             f'$f.ShowDialog() | Out-Null; '
+             f'$f.SelectedPath'],
+            capture_output=True, text=True, timeout=60,
+        )
+        path = res.stdout.strip()
+        if path:
+            return jsonify({"path": path})
+    except Exception:
+        pass
+    return jsonify({"path": ""})
 
 
 @flask_app.route("/crawl", methods=["POST"])
@@ -228,9 +237,10 @@ def crawl():
     if state["running"]:
         return jsonify({"ok": False, "msg": "이미 수집 중입니다."}), 400
 
-    data  = request.json or {}
-    url   = (data.get("url") or "").strip()
-    max_r = int(data.get("max_reviews") or 500)
+    data     = request.json or {}
+    url      = (data.get("url") or "").strip()
+    save_dir = (data.get("save_dir") or str(OUTPUT_DIR)).strip()
+    max_r    = int(data.get("max_reviews") or 500)
     if max_r <= 0:
         max_r = 99999
 
@@ -238,7 +248,7 @@ def crawl():
     if not site:
         return jsonify({"ok": False, "msg": "지원하지 않는 URL입니다."}), 400
 
-    save_config({"max_reviews": max_r})
+    save_config({"save_dir": save_dir, "max_reviews": max_r})
 
     while not log_q.empty():
         try: log_q.get_nowait()
@@ -246,7 +256,7 @@ def crawl():
 
     threading.Thread(
         target=crawl_worker,
-        args=(url, site, max_r),
+        args=(url, site, save_dir, max_r),
         daemon=True,
     ).start()
 
@@ -274,12 +284,14 @@ def stream():
     )
 
 
-@flask_app.route("/download/<filename>")
-def download(filename):
-    path = TEMP_DIR / filename
-    if not path.exists() or path.suffix != ".xlsx":
-        return "File not found", 404
-    return send_file(str(path), as_attachment=True, download_name=filename)
+@flask_app.route("/open_folder", methods=["POST"])
+def open_folder():
+    path = (request.json or {}).get("path", "")
+    if path:
+        folder = str(Path(path).parent)
+        if Path(folder).exists():
+            os.startfile(folder)
+    return jsonify({"ok": True})
 
 
 # ── 진입점 ───────────────────────────────────────────────────────────────
@@ -301,12 +313,7 @@ def _free_port(port: int):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5001))
-    host = "0.0.0.0"
-
-    if IS_LOCAL:
-        _free_port(port)
-        import webbrowser
-        threading.Timer(1.2, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
-
-    flask_app.run(host=host, port=port, debug=False, use_reloader=False)
+    port = 5001
+    _free_port(port)
+    threading.Timer(1.2, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
+    flask_app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
