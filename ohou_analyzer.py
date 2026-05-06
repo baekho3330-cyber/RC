@@ -270,10 +270,8 @@ def analyze_with_claude(review_text: str, product_name: str, api_key: str) -> st
     with client.messages.stream(
         model="claude-opus-4-6",
         max_tokens=8000,
-        thinking={"type": "adaptive"},
-        system=system,
-        messages=[{"role": "user", "content": prompt}],
-        cache_control={"type": "ephemeral"},
+        system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+        messages=[{"role": "user", "content": [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]}],
     ) as stream:
         for text in stream.text_stream:
             print(text, end="", flush=True)

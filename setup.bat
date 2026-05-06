@@ -4,7 +4,7 @@ echo  Review Collector - Setup
 echo ================================
 echo.
 
-echo [1/2] Installing Python packages...
+echo [1/3] Installing Python packages...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo [!] pip install failed.
@@ -13,7 +13,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [2/2] Installing Playwright browser...
+echo [2/3] Installing Playwright browser...
 playwright install chromium
 if %errorlevel% neq 0 (
     echo [!] Playwright install failed.
