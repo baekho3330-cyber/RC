@@ -5,7 +5,9 @@ temp/
 
 # 설정 (PC마다 다름)
 config.json
-icon.ico
+
+# 바로가기 (절대경로 포함, PC마다 다름)
+*.lnk
 
 # 디버그/임시 파일
 debug_*.py
