@@ -5,3 +5,4 @@ openpyxl>=3.1
 playwright>=1.50
 Pillow>=10.0
 anthropic>=0.40
+pyinstaller>=6.0

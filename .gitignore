@@ -33,6 +33,11 @@ naver_crawler.py
 main.py
 exporter.py
 
+# PyInstaller 빌드 결과물
+build/
+dist/
+*.spec.bak
+
 # Python
 __pycache__/
 *.pyc

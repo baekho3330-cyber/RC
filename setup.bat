@@ -22,12 +22,17 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [3/3] Creating shortcut...
-powershell -Command "$ws=New-Object -ComObject WScript.Shell; $sc=$ws.CreateShortcut('%~dp0ReviewCollector.lnk'); $sc.TargetPath='%~dp0ReviewCollector.hta'; $sc.IconLocation='%~dp0icon.ico,0'; $sc.Description='Review Collector'; $sc.Save()"
+echo [3/3] Building executable...
+pyinstaller ReviewCollector.spec --noconfirm
+if %errorlevel% neq 0 (
+    echo [!] Build failed.
+    pause
+    exit /b 1
+)
 
 echo.
 echo ================================
-echo  Setup complete!
-echo  Run: double-click ReviewCollector.lnk
+echo  Build complete!
+echo  Run: dist\ReviewCollector\ReviewCollector.exe
 echo ================================
 pause

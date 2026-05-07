@@ -19,10 +19,17 @@ except ImportError:
     print("Flask not installed. Run: pip install flask")
     sys.exit(1)
 
-os.chdir(Path(__file__).parent)
+if getattr(sys, 'frozen', False):
+    _app_dir  = Path(sys.executable).parent
+    _base_dir = Path(sys._MEIPASS)
+else:
+    _app_dir  = Path(__file__).parent
+    _base_dir = _app_dir
 
-CONFIG_FILE = Path(__file__).parent / "config.json"
-OUTPUT_DIR  = Path(__file__).parent / "output"
+os.chdir(_app_dir)
+
+CONFIG_FILE = _app_dir / "config.json"
+OUTPUT_DIR  = _app_dir / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 SITE_PATTERNS = {
@@ -36,7 +43,7 @@ SITE_NAMES = {
     "hanssem": "한샘몰",
 }
 
-flask_app = Flask(__name__)
+flask_app = Flask(__name__, template_folder=str(_base_dir / 'templates'))
 log_q: queue.Queue = queue.Queue()
 state: dict = {"running": False, "result": None}
 
