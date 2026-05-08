@@ -1,6 +1,6 @@
 @echo off
 echo ================================
-echo  Review Collector - Setup
+echo  Review Fetch - Setup
 echo ================================
 echo.
 
@@ -23,7 +23,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [3/3] Building executable...
-pyinstaller ReviewCollector.spec --noconfirm
+pyinstaller ReviewFetch.spec --noconfirm
 if %errorlevel% neq 0 (
     echo [!] Build failed.
     pause
@@ -33,6 +33,6 @@ if %errorlevel% neq 0 (
 echo.
 echo ================================
 echo  Build complete!
-echo  Run: dist\ReviewCollector\ReviewCollector.exe
+echo  Run: dist\ReviewFetch\ReviewFetch.exe
 echo ================================
 pause
